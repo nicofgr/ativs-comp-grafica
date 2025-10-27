@@ -51,6 +51,13 @@ int selected_vertex = 0;
 int selected_face = 0;
 int selected_edge = 0;
 
+typedef enum{
+        BRESENHAM,
+        WU
+}LineMethods;
+
+LineMethods lineChoice;
+
 void swapFloat(float* x1 , float* x2){
         float aux = *x1;
         *x1 = *x2;
@@ -375,14 +382,20 @@ void HE_draw(const HE_Object object){
                 //printf("v%d: %.2f %.2f %.2f\n", originVertex+1, x1, y1, z1);
                 //printf("v%d: %.2f %.2f %.2f\n", nextVertex+1, x2, y2, z2);
                 if (step_draw == FALSE && (originVertex == selected_vertex || nextVertex == selected_vertex) && option_selected == 3){
-                        //drawLineBresenham(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
-                        drawLineXiaolinWu(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.12f, 0.12f, 1.0f});
+                        if(lineChoice == BRESENHAM)
+                                drawLineBresenham(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
+                        if(lineChoice == WU)
+                                drawLineXiaolinWu(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.12f, 0.12f, 1.0f});
                 }else if (step == cnt-1 && step_draw == TRUE){
-                        //drawLineBresenham(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
-                        drawLineXiaolinWu(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
+                        if(lineChoice == BRESENHAM)
+                                drawLineBresenham(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
+                        if(lineChoice == WU)
+                                drawLineXiaolinWu(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
                 }else{
-                        //drawLineBresenham(x1, y1, z1, x2, y2, z2, 20, 0.25f, (Color_RGBA){1.0f, 0.6f, 0.133f, 1.0f});
-                        drawLineXiaolinWu(x1, y1, z1, x2, y2, z2, 20, 0.25f, (Color_RGBA){1.0f, 0.6f, 0.133f, 0.8f});
+                        if(lineChoice == BRESENHAM)
+                                drawLineBresenham(x1, y1, z1, x2, y2, z2, 20, 0.25f, (Color_RGBA){1.0f, 0.6f, 0.133f, 1.0f});
+                        if(lineChoice == WU)
+                                drawLineXiaolinWu(x1, y1, z1, x2, y2, z2, 20, 0.25f, (Color_RGBA){1.0f, 0.6f, 0.133f, 0.8f});
                 }
                 step++;
         }
@@ -503,6 +516,20 @@ void draw(){
 }
 
 int main(int argc, char** argv) {
+        if(argc == 2){
+                if(strcmp(argv[1], "bresenham") == 0){
+                        printf("Using Bresenham\n");
+                        fflush(stdout);
+                        lineChoice = BRESENHAM;
+                }
+                if(strcmp(argv[1], "wu") == 0){
+                        printf("Using Xiaolin Wu\n");
+                        fflush(stdout);
+                        lineChoice = WU;
+                }
+        }
+
+
         if(SDL_Init(SDL_INIT_EVERYTHING) != 0){
                 printf("SDL2 could not initialize video subsystem\n");
                 exit(1);

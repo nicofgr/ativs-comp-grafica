@@ -10,5 +10,11 @@ profile:
 run:
 	./saida.out
 
+bresenham:
+	./saida.out bresenham
+
+wu:
+	./saida.out wu
+
 clean:
 	rm ./saida.out
