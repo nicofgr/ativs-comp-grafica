@@ -74,35 +74,91 @@ void drawPoint(const float x,const float y){
         SDL_RenderDrawPoint(renderer, (((x/ASPECT_RATIO)+1)/2)*SCREEN_WIDTH, ((y+1)/2)*SCREEN_HEIGHT);
 }
 
-void drawSegmentByLineEquation(float x1, float y1, float z1, float x2, float y2, float z2, const unsigned int resolution, const float point_size_multiplier, const Color_RGBA color){
-        float a = x2-x1;  // dx
-        float b = y2-y1;  // dy
-        float c = z2-z1;  // dz
+void normalizePoint(vec3 v){
+        v[0] = (((v[0]/SCREEN_WIDTH)*2) - 1) * ASPECT_RATIO;
+        v[1] = (((v[1]/SCREEN_HEIGHT)*2) - 1);
+}
 
-        float x = x1;
+
+void drawLineH(float x1, float x2, float y1, float y2){
+        if (x1 > x2){
+                swapFloat(&x1, &x2);
+                swapFloat(&y1, &y2);
+        }
+
+        float dx = x2-x1;  // dx
+        float dy = y2-y1;  // dy
+        
+        int dir = 1;
+        if(dy < 0) dir = -1;
+        dy *= dir;
+
+        if( dx == 0 ) return;
         float y = y1;
-        float z = z1;
+        float p = 2*dy - dx;
 
-        float verts[(resolution*3)+3];
-        float step = 1.0f / (resolution-1);
-        for (int i = 1; i <= resolution-1; i++) { // From 0 till res-1
-                verts[i*3 + 0] = x;
-                verts[i*3 + 1] = y;
-                verts[i*3 + 2] = z;
-                x += step*a;
-                y += step*b;
-                z += step*c;
-                vec3 point = {x, y, z};
-
+        for (int i = 0; i < dx+1 ; i++) {
+                vec3 point = {x1 + i, y, 1.0f};
+                normalizePoint(point);
                 mat4 model;
                 mm_mat4_identity(model);
                 mm_scale(model, (vec3){1.0/3,1.0/3,1.0/3});
-                mm_rotate(model, rotate_speed*((float)SDL_GetTicks()/1000.0f)*MM_PI*2, (vec3){0.0f, 1.0f, 0.0f});
-                //mm_perspective(mm_rad(FOV), (float)SCREEN_WIDTH/(float)SCREEN_HEIGHT, 0.1f, 100.0f, model);
                 mm_mat4_mulv3(model, point, point);
                 drawPoint(point[0], point[1]);
+
+                if(p >= 0){
+                        y += dir;
+                        p = p - 2*dx;
+                }
+                p = p + 2*dy;
+        }
+}
+void drawLineV(float x1, float x2, float y1, float y2){
+        if (y1 > y2){
+                swapFloat(&x1, &x2);
+                swapFloat(&y1, &y2);
         }
 
+        float dx = x2-x1;  // dx
+        float dy = y2-y1;  // dy
+        
+        int dir = 1;
+        if(dx < 0) dir = -1;
+        dx *= dir;
+
+        if( dy == 0 ) return;
+        float x = x1;
+        float p = 2*dx - dy;
+
+        for (int i = 0; i < dy+1 ; i++) {
+                vec3 point = {x, y1 + i, 1.0f};
+                normalizePoint(point);
+                mat4 model;
+                mm_mat4_identity(model);
+                mm_scale(model, (vec3){1.0/3,1.0/3,1.0/3});
+                mm_mat4_mulv3(model, point, point);
+                drawPoint(point[0], point[1]);
+
+                if(p >= 0){
+                        x += dir;
+                        p = p - 2*dy;
+                }
+                p = p + 2*dx;
+        }
+}
+void drawSegmentByLineEquation(float x1, float y1, float z1, float x2, float y2, float z2, const unsigned int resolution, const float point_size_multiplier, const Color_RGBA color){
+        x1 = (((x1/ASPECT_RATIO)+1)/2)*SCREEN_WIDTH;
+        x2 = (((x2/ASPECT_RATIO)+1)/2)*SCREEN_WIDTH;
+        y1 = ((y1+1)/2)*SCREEN_HEIGHT;
+        y2 = ((y2+1)/2)*SCREEN_HEIGHT;
+
+        if(fabs(x2-x1) > fabs(y2-y1))
+                drawLineH(x1, x2, y1, y2);
+        else
+                drawLineV(x1, x2, y1, y2);
+
+
+        /**
         mat4 model;
         mm_mat4_identity(model);
         if(rotate == FALSE){}
@@ -125,6 +181,7 @@ void drawSegmentByLineEquation(float x1, float y1, float z1, float x2, float y2,
         mat4 proj;  // Clip space
         mm_mat4_identity(proj);
         mm_perspective(mm_rad(FOV), (float)SCREEN_WIDTH/(float)SCREEN_HEIGHT, 0.1f, 100.0f, proj);
+        **/
 }
 
 float* HE_get_object_verts_as_array(HE_Object object){
