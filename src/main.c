@@ -71,12 +71,16 @@ Color_RGBA red_color   = {0.85f, 0.02f, 0.12f, 0.5f};
 Color_RGBA green_color = {0.20f, 1.0f, 0.69f, 0.5f};
 
 void drawPoint(const float x,const float y){
-        SDL_RenderDrawPoint(renderer, (((x/ASPECT_RATIO)+1)/2)*SCREEN_WIDTH, ((y+1)/2)*SCREEN_HEIGHT);
+        SDL_RenderDrawPoint(renderer, x, y);
 }
 
 void normalizePoint(vec3 v){
         v[0] = (((v[0]/SCREEN_WIDTH)*2) - 1) * ASPECT_RATIO;
         v[1] = (((v[1]/SCREEN_HEIGHT)*2) - 1);
+}
+void denormalizePoint(vec3 v){
+        v[0] = (((v[0]/ASPECT_RATIO)+1)/2)*SCREEN_WIDTH;
+        v[1] = ((v[1]+1)/2)*SCREEN_HEIGHT;
 }
 
 
@@ -104,6 +108,7 @@ void drawLineH(float x1, float x2, float y1, float y2){
                 mm_mat4_identity(model);
                 mm_scale(model, (vec3){1.0/3,1.0/3,1.0/3});
                 mm_mat4_mulv3(model, point, point);
+                denormalizePoint(point);
                 drawPoint(point[0], point[1]);
 
                 if(p >= 0){
@@ -137,6 +142,7 @@ void drawLineV(float x1, float x2, float y1, float y2){
                 mm_mat4_identity(model);
                 mm_scale(model, (vec3){1.0/3,1.0/3,1.0/3});
                 mm_mat4_mulv3(model, point, point);
+                denormalizePoint(point);
                 drawPoint(point[0], point[1]);
 
                 if(p >= 0){
@@ -146,7 +152,8 @@ void drawLineV(float x1, float x2, float y1, float y2){
                 p = p + 2*dx;
         }
 }
-void drawSegmentByLineEquation(float x1, float y1, float z1, float x2, float y2, float z2, const unsigned int resolution, const float point_size_multiplier, const Color_RGBA color){
+void drawLineBresenham(float x1, float y1, float z1, float x2, float y2, float z2, const unsigned int resolution, const float point_size_multiplier, const Color_RGBA color){
+        SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255);
         x1 = (((x1/ASPECT_RATIO)+1)/2)*SCREEN_WIDTH;
         x2 = (((x2/ASPECT_RATIO)+1)/2)*SCREEN_WIDTH;
         y1 = ((y1+1)/2)*SCREEN_HEIGHT;
@@ -182,6 +189,101 @@ void drawSegmentByLineEquation(float x1, float y1, float z1, float x2, float y2,
         mm_mat4_identity(proj);
         mm_perspective(mm_rad(FOV), (float)SCREEN_WIDTH/(float)SCREEN_HEIGHT, 0.1f, 100.0f, proj);
         **/
+}
+
+void drawLineXiaolinWu(float x1, float y1, float z1, float x2, float y2, float z2, const unsigned int resolution, const float point_size_multiplier, const Color_RGBA color){
+        vec3 point1 = {x1, y1, 1.0f};
+        vec3 point2 = {x2, y2, 1.0f};
+        mat4 model;
+        mm_mat4_identity(model);
+        mm_scale(model, (vec3){1.0/3,1.0/3,1.0/3});
+        mm_mat4_mulv3(model, point1, point1);
+        mm_mat4_mulv3(model, point2, point2);
+        x1 = point1[0];
+        y1 = point1[1];
+        x2 = point2[0];
+        y2 = point2[1];
+
+        SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255);
+        x1 = (((x1/ASPECT_RATIO)+1)/2)*SCREEN_WIDTH;
+        x2 = (((x2/ASPECT_RATIO)+1)/2)*SCREEN_WIDTH;
+        y1 = ((y1+1)/2)*SCREEN_HEIGHT;
+        y2 = ((y2+1)/2)*SCREEN_HEIGHT;
+
+
+        // Actual method ==============================================================
+        if(fabs(y2-y1) < fabs(x2-x1)){
+                if (x2 < x1){
+                        swapFloat(&x1, &x2);
+                        swapFloat(&y1, &y2);
+                }
+                float dx = x2 - x1;
+                float dy = y2 - y1;
+                float m = 1;
+                if(dx != 0) m = dy/dx;
+
+                float overlap = 1 - ((x1 + 0.5) - (int)(x1 + 0.5));
+                float distStart = y1 - (int)y1;
+                SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255*((1-distStart)*overlap));
+                drawPoint((int)(x1+0.5), (int)y1);
+                SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255*(distStart*overlap));
+                drawPoint((int)(x1+0.5), (int)y1 + 1);
+
+                overlap = ((x2 - 0.5) - (int)(x2 - 0.5));
+                float distEnd = y2 - (int)y2;
+                SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255*((1-distEnd)*overlap));
+                drawPoint((int)(x2+0.5), (int)y2);
+                SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255*(distEnd*overlap));
+                drawPoint((int)(x2+0.5), (int)y2 + 1);
+
+                for(int i = 1; i <= (int)dx + 0.5; i++){
+                        float x = x1 + i;
+                        float y = y1 + i * m;
+                        int ix = (int)x;
+                        int iy = (int)y;
+                        float dist = y - iy;
+                        SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255*(1-dist));
+                        drawPoint(ix, iy);
+                        SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255*(dist));
+                        drawPoint(ix, iy+1);
+                }
+        }else{ //============================================================================
+                if (y2 < y1){
+                        swapFloat(&x1, &x2);
+                        swapFloat(&y1, &y2);
+                }
+                float dx = x2 - x1;
+                float dy = y2 - y1;
+                float m = 1;
+                if(dy != 0) m = dx/dy;
+
+                float overlap = 1 - ((y1 + 0.5) - (int)(y1 + 0.5));
+                float distStart = y1 - (int)y1;
+                SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255*((1-distStart)*overlap));
+                drawPoint((int)(x1+0.5), (int)y1);
+                SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255*(distStart*overlap));
+                drawPoint((int)(x1+0.5), (int)y1 + 1);
+
+                overlap = ((y2 - 0.5) - (int)(y2 - 0.5));
+                float distEnd = y2 - (int)y2;
+                SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255*((1-distEnd)*overlap));
+                drawPoint((int)(x2+0.5), (int)y2);
+                SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255*(distEnd*overlap));
+                drawPoint((int)(x2+0.5), (int)y2 + 1);
+
+                for(int i = 1; i <= (int)dy + 0.5; i++){
+                        float x = x1 + i * m;
+                        float y = y1 + i;
+                        int ix = (int)x;
+                        int iy = (int)y;
+                        float dist = x - ix;
+                        SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255*(1-dist));
+                        drawPoint(ix, iy);
+                        SDL_SetRenderDrawColor(renderer, color.R*255, color.G*255, color.B*255, color.A*255*(dist));
+                        drawPoint(ix+1, iy);
+                }
+        }
+
 }
 
 float* HE_get_object_verts_as_array(HE_Object object){
@@ -273,17 +375,21 @@ void HE_draw(const HE_Object object){
                 //printf("v%d: %.2f %.2f %.2f\n", originVertex+1, x1, y1, z1);
                 //printf("v%d: %.2f %.2f %.2f\n", nextVertex+1, x2, y2, z2);
                 if (step_draw == FALSE && (originVertex == selected_vertex || nextVertex == selected_vertex) && option_selected == 3){
-                        drawSegmentByLineEquation(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
+                        //drawLineBresenham(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
+                        drawLineXiaolinWu(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.12f, 0.12f, 1.0f});
                 }else if (step == cnt-1 && step_draw == TRUE){
-                        drawSegmentByLineEquation(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
+                        //drawLineBresenham(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
+                        drawLineXiaolinWu(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
                 }else{
-                        drawSegmentByLineEquation(x1, y1, z1, x2, y2, z2, 20, 0.25f, (Color_RGBA){1.0f, 0.6f, 0.133f, 1.0f});
+                        //drawLineBresenham(x1, y1, z1, x2, y2, z2, 20, 0.25f, (Color_RGBA){1.0f, 0.6f, 0.133f, 1.0f});
+                        drawLineXiaolinWu(x1, y1, z1, x2, y2, z2, 20, 0.25f, (Color_RGBA){1.0f, 0.6f, 0.133f, 0.8f});
                 }
                 step++;
         }
 }
 
 void init() {
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         current_object = HE_load("test.obj");
 }
 int update_item = FALSE;
