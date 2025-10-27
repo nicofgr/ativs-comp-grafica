@@ -52,6 +52,26 @@ void mm_mat4_mul(const mat4 a, const mat4 b, mat4 dest){  // AB[x]
         mm_mat4_copy(result, dest);
 }
 
+void mm_vec3_copy(const vec3 source, vec3 dest){
+        dest[0] = source[0];
+        dest[1] = source[1];
+        dest[2] = source[2];
+}
+
+void mm_mat4_mulv3(mat4 m, vec3 v, vec3 dest){
+        vec4 helper = {v[0], v[1], v[2], 1};
+        for(int i = 0; i < 4; i++){
+                float sum = 0;
+                for(int k = 0; k < 4; k++){
+                        sum += (m[i][k] * helper[k]);
+                }
+                helper[i] = sum;
+        }
+        float w = helper[3];
+        vec3 result = {helper[0]/w, helper[1]/w, helper[2]/w};
+        mm_vec3_copy(result, dest);
+}
+
 void mm_mat4_transpose(mat4 mat){
         for(int i = 0; i < 4; i++){
                 for(int j = 0; j < 4; j++){
@@ -245,11 +265,6 @@ void mm_perspective(float fov, float aspect_ratio, float near, float far, mat4 d
         mm_mat4_transpose(dest);
 }
 
-void mm_vec3_copy(const vec3 source, vec3 dest){
-        dest[0] = source[0];
-        dest[1] = source[1];
-        dest[2] = source[2];
-}
 void mm_vec3_muladds(const vec3 a, float scalar, vec3 dest){ //pos += (front*spd)
         dest[0] += a[0]*scalar;
         dest[1] += a[1]*scalar;
