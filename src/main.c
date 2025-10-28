@@ -199,11 +199,11 @@ void drawLineBresenham(float x1, float y1, float z1, float x2, float y2, float z
 }
 
 void drawLineXiaolinWu(float x1, float y1, float z1, float x2, float y2, float z2, const unsigned int resolution, const float point_size_multiplier, const Color_RGBA color){
-        vec3 point1 = {x1, y1, 1.0f};
-        vec3 point2 = {x2, y2, 1.0f};
+        vec3 point1 = {x1, y1, z1};
+        vec3 point2 = {x2, y2, z2};
         mat4 model;
         mm_mat4_identity(model);
-        mm_scale(model, (vec3){1.0/3,1.0/3,1.0/3});
+        //mm_scale(model, (vec3){1.0/3,1.0/3,1.0/3});
         mm_mat4_mulv3(model, point1, point1);
         mm_mat4_mulv3(model, point2, point2);
         x1 = point1[0];

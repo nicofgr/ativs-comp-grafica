@@ -72,22 +72,18 @@ void mm_mat4_transpose(mat4 mat){
 }
 void mm_mat4_mulv3(mat4 m, vec3 v, vec3 dest){
         mm_mat4_transpose(m); // CHANGE THIS IF CHANGE TO COLUMN-MAJOR
-        //print_mat4(m);
-        //printf("Before %.2f %.2f %.2f\n", v[0], v[1], v[2]);
         vec4 helper = {v[0], v[1], v[2], 1};
-        for(int i = 0; i < 4; i++){
+        vec3 result;
+        for(int i = 0; i < 3; i++){
                 float sum = 0;
                 for(int k = 0; k < 4; k++){
                         sum += (m[i][k] * helper[k]);
                 }
-                helper[i] = sum;
+                result[i] = sum;
         }
         float w = helper[3];
-        vec3 result = {helper[0], helper[1], helper[2]};
         mm_vec3_copy(result, dest);
-        //printf("After %.2f %.2f %.2f\n", dest[0], dest[1], dest[2]);
         mm_mat4_transpose(m); // CHANGE THIS IF CHANGE TO COLUMN-MAJOR
-        
 }
 
 void mm_scale(mat4 mat, vec3 vec){
@@ -132,6 +128,17 @@ void mm_rotate_around_x(mat4 mat, float radians){
         rx[2][2] = cos(radians);
         mm_mat4_transpose(rx);
         mm_mat4_mul(rx, mat, mat);
+}
+
+void mm_rotate_around_z(mat4 mat, float radians){
+        mat4 rz;
+        mm_mat4_identity(rz);
+        rz[0][0] = cos(radians);
+        rz[0][1] = -sin(radians);
+        rz[1][0] = sin(radians);
+        rz[1][1] = cos(radians);
+        mm_mat4_transpose(rz);
+        mm_mat4_mul(rz, mat, mat);
 }
 
 void mm_rotate(mat4 mat, float radians, vec3 axis){
