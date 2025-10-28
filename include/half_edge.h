@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include "obj_loader.h"
+#include "matrix_math.h"
 
 struct HE_Face;
 struct HE_HalfEdge;
@@ -47,6 +48,20 @@ typedef struct{
         HE_Face_Array face_array;
         HE_Edge_Array edge_array;
 }HE_Object;
+
+void HE_applyTransform(mat4 m, HE_Object o){
+        unsigned int size = o.vertex_array.size;
+        for(int i = 0; i < size; i++){
+                float x = o.vertex_array.array[i].x;
+                float y = o.vertex_array.array[i].y;
+                float z = o.vertex_array.array[i].z;
+                vec3 vertex = {x, y, z};
+                mm_mat4_mulv3(m, vertex, vertex);
+                o.vertex_array.array[i].x = vertex[0];
+                o.vertex_array.array[i].y = vertex[1];
+                o.vertex_array.array[i].z = vertex[2];
+        }
+}
 
 void HE_vertexArray_Push(HE_Vertex_Array* verArray, float x, float y, float z, unsigned int inc_edge_ID){
         if(verArray->size == 0){

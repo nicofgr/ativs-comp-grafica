@@ -378,9 +378,6 @@ void HE_draw(const HE_Object object){
                 float x2 = verArray.array[nextVertex].x;
                 float y2 = verArray.array[nextVertex].y;
                 float z2 = verArray.array[nextVertex].z;
-                //printf("From v%d to v%d\n", originVertex+1, nextVertex+1);
-                //printf("v%d: %.2f %.2f %.2f\n", originVertex+1, x1, y1, z1);
-                //printf("v%d: %.2f %.2f %.2f\n", nextVertex+1, x2, y2, z2);
                 if (step_draw == FALSE && (originVertex == selected_vertex || nextVertex == selected_vertex) && option_selected == 3){
                         if(lineChoice == BRESENHAM)
                                 drawLineBresenham(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
@@ -407,6 +404,79 @@ void init() {
 }
 int update_item = FALSE;
 
+void saveObject(char* filename){
+        FILE* file = fopen(filename, "w");
+        
+        int vertex_size = current_object.vertex_array.size;
+        for(int i = 0; i < vertex_size; i++){
+                float x = current_object.vertex_array.array[i].x;
+                float y = current_object.vertex_array.array[i].y;
+                float z = current_object.vertex_array.array[i].z;
+                fprintf(file, "v %g %g %g\n", x, y, z);
+        }
+        int face_size = current_object.face_array.size;
+        for(int i = 0; i < face_size; i++){
+                int first_edge = current_object.face_array.array[i].edge_ID; 
+                int vertex = current_object.edge_array.array[first_edge].origin_vertex_ID;
+                fprintf(file, "f %d ", vertex);
+                int next_edge = current_object.edge_array.array[first_edge].nextEdge_ID;
+                while(next_edge != first_edge){
+                        vertex = current_object.edge_array.array[next_edge].origin_vertex_ID;
+                        fprintf(file, "%d ", vertex);
+                        next_edge = current_object.edge_array.array[next_edge].nextEdge_ID;
+                }
+                fprintf(file, "\n");
+        }
+        fclose(file);
+}
+
+void transformObject(char command[50]){
+        printf("Command read: %s\n", command);
+        mat4 transform;
+        float rad = 0;
+        float t1 = 0, t2 = 0, t3 = 0;
+        char c;
+        char axis;
+        mm_mat4_identity(transform);
+        switch(command[0]){
+                case 't':
+                        sscanf(command, "%c %f %f", &c, &t1, &t2);
+                        printf("%c %.2f %.2f\n",c, t1, t2);
+                        mm_translate(transform, (vec3){t1, t2, 0});
+                        break;
+                case 's':
+                        sscanf(command, "%c %f %f", &c, &t1, &t2);
+                        mm_scale(transform, (vec3){t1, t2, 0});
+                        break;
+                case 'r':
+                        sscanf(command, "%c %f", &c, &rad);
+                        mm_rotate(transform, rad*0.0174533, (vec3){0, 0.0f, 1.0f});
+                        break;
+                case 'h':
+                        sscanf(command, "%c %c %f", &c, &axis, &t1);
+                        if (axis == 'x')
+                                mm_shear_x(transform, t1);
+                        if (axis == 'y')
+                                mm_shear_y(transform, t1);
+                        break;
+                case 'm':
+                        sscanf(command, "%c %c", &c, &axis);
+                        if (axis == 'x')
+                                mm_mirror_x(transform);
+                        if (axis == 'y')
+                                mm_mirror_y(transform);
+                        break;
+                default:
+                        puts("Comando não reconhecido 2");
+                        return;
+        }
+        HE_applyTransform(transform, current_object);
+        fflush(stdout);
+
+        saveObject("transformado.obj");
+        return;
+}
+
 void input(int * quit){
         SDL_Event e;
         const float camera_speed = 0.1f;
@@ -426,6 +496,12 @@ void input(int * quit){
                                                 SDL_SetRelativeMouseMode(SDL_TRUE);
                                                 SDL_GetRelativeMouseState(NULL, NULL);
                                         }
+                                }
+                                if(e.key.keysym.sym == SDLK_SLASH){
+                                        char command[50];
+                                        fgets(command, 50, stdin);
+                                        command[49] = '\0';
+                                        transformObject(command); 
                                 }
                                 break;  
                         case SDL_DROPFILE:

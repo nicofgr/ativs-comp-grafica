@@ -58,20 +58,6 @@ void mm_vec3_copy(const vec3 source, vec3 dest){
         dest[2] = source[2];
 }
 
-void mm_mat4_mulv3(mat4 m, vec3 v, vec3 dest){
-        vec4 helper = {v[0], v[1], v[2], 1};
-        for(int i = 0; i < 4; i++){
-                float sum = 0;
-                for(int k = 0; k < 4; k++){
-                        sum += (m[i][k] * helper[k]);
-                }
-                helper[i] = sum;
-        }
-        float w = helper[3];
-        vec3 result = {helper[0]/w, helper[1]/w, helper[2]/w};
-        mm_vec3_copy(result, dest);
-}
-
 void mm_mat4_transpose(mat4 mat){
         for(int i = 0; i < 4; i++){
                 for(int j = 0; j < 4; j++){
@@ -84,6 +70,26 @@ void mm_mat4_transpose(mat4 mat){
                 }
         }
 }
+void mm_mat4_mulv3(mat4 m, vec3 v, vec3 dest){
+        mm_mat4_transpose(m); // CHANGE THIS IF CHANGE TO COLUMN-MAJOR
+        //print_mat4(m);
+        //printf("Before %.2f %.2f %.2f\n", v[0], v[1], v[2]);
+        vec4 helper = {v[0], v[1], v[2], 1};
+        for(int i = 0; i < 4; i++){
+                float sum = 0;
+                for(int k = 0; k < 4; k++){
+                        sum += (m[i][k] * helper[k]);
+                }
+                helper[i] = sum;
+        }
+        float w = helper[3];
+        vec3 result = {helper[0], helper[1], helper[2]};
+        mm_vec3_copy(result, dest);
+        //printf("After %.2f %.2f %.2f\n", dest[0], dest[1], dest[2]);
+        mm_mat4_transpose(m); // CHANGE THIS IF CHANGE TO COLUMN-MAJOR
+        
+}
+
 void mm_scale(mat4 mat, vec3 vec){
         mat4 scaler;
         mm_mat4_identity(scaler);
@@ -153,6 +159,35 @@ void mm_rotate(mat4 mat, float radians, vec3 axis){
         mm_rotate_around_y(mat, radians);
         mm_rotate_around_x(mat, -theta);
         mm_rotate_around_y(mat, -phi);
+}
+
+void mm_mirror_x(mat4 mat){
+        mat4 mirror;
+        mm_mat4_identity(mirror);
+        mirror[0][0] = -1;
+        mm_mat4_mul(mirror, mat, mat);
+}
+
+void mm_mirror_y(mat4 mat){
+        mat4 mirror;
+        mm_mat4_identity(mirror);
+        mirror[1][1] = -1;
+        mm_mat4_mul(mirror, mat, mat);
+}
+
+void mm_shear_x(mat4 mat, float factor){
+        mat4 shear;
+        mm_mat4_identity(shear);
+        shear[0][1] = -factor;
+        mm_mat4_transpose(shear);
+        mm_mat4_mul(shear, mat, mat);
+}
+void mm_shear_y(mat4 mat, float factor){
+        mat4 shear;
+        mm_mat4_identity(shear);
+        shear[1][0] = -factor;
+        mm_mat4_transpose(shear);
+        mm_mat4_mul(shear, mat, mat);
 }
 
 float mm_rad(float degrees){
