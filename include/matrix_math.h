@@ -73,15 +73,18 @@ void mm_mat4_transpose(mat4 mat){
 void mm_mat4_mulv3(mat4 m, vec3 v, vec3 dest){
         mm_mat4_transpose(m); // CHANGE THIS IF CHANGE TO COLUMN-MAJOR
         vec4 helper = {v[0], v[1], v[2], 1};
-        vec3 result;
-        for(int i = 0; i < 3; i++){
+        vec4 result;
+        for(int i = 0; i < 4; i++){
                 float sum = 0;
                 for(int k = 0; k < 4; k++){
                         sum += (m[i][k] * helper[k]);
                 }
                 result[i] = sum;
         }
-        float w = helper[3];
+        float w = result[3];
+        result[0] /= w;
+        result[1] /= w;
+        result[2] /= w;
         mm_vec3_copy(result, dest);
         mm_mat4_transpose(m); // CHANGE THIS IF CHANGE TO COLUMN-MAJOR
 }

@@ -202,15 +202,9 @@ int HE_get_next_edge(HE_Edge_Array edge_array, int index){   // NEEDS REFACTORIN
         return -1;
 }
 
-HE_Object HE_load(const char* filename){
-        int debug_counter = 0;
+static void HE_load_vertices(const OBJ object, HE_Object* output){
         float x, y, z;
-        OBJ object;
-        read_obj(filename, &object);
-
         HE_Vertex_Array verArray  = {NULL, 0};
-        HE_Face_Array   faceArray = {NULL, 0};
-        HE_Edge_Array   edgeArray = {NULL, 0};
 
         // Carrega os vértices
         for(int i = 0; i < object.vertex.size; i++){
@@ -219,6 +213,13 @@ HE_Object HE_load(const char* filename){
                 z = object.vertex.verts[i].z;
                 HE_vertexArray_Push(&verArray, x, y, z, 0);
         }
+
+        output->vertex_array = verArray;
+        return;
+}
+
+static void HE_center_model(HE_Object* object){
+        HE_Vertex_Array verArray = object->vertex_array;
         // Centering model in local space
         float sumX = 0;
         float sumY = 0;
@@ -233,7 +234,11 @@ HE_Object HE_load(const char* filename){
                 verArray.array[i].y -= (sumY/verArray.size);
                 verArray.array[i].z -= (sumZ/verArray.size);
         }
+        return;
+}
 
+static void HE_generate_edge_and_face_array(const OBJ object, HE_Object* ret){
+        HE_Vertex_Array verArray = ret->vertex_array;
         // -----------
         int conMap [verArray.size][verArray.size];
 
@@ -242,6 +247,8 @@ HE_Object HE_load(const char* filename){
                         conMap[i][j] = -1;
 
 
+        HE_Face_Array   faceArray = {NULL, 0};
+        HE_Edge_Array   edgeArray = {NULL, 0};
         int* verts;
         int edge_counter = 0;
         for(int i = 0; i < object.face.size; i++){
@@ -267,7 +274,6 @@ HE_Object HE_load(const char* filename){
                 }
                 free(verts);
         }
-
         // Determina os twins dos edges a partir do mapa de relações
         // Caso não tenha twin, cria um edge novo
         for(int index = 0; index < edgeArray.size; index++){
@@ -296,6 +302,60 @@ HE_Object HE_load(const char* filename){
                         edgeArray.array[nextEdge_ID].prvsEdge_ID = index;
                 }
         }
+        ret->edge_array   = edgeArray;
+        ret->face_array   = faceArray;
+        return;
+}
+
+void HE_copy_object(const HE_Object source, HE_Object* dest){
+        float x, y, z;
+        int nextID;
+        HE_Vertex_Array vertArray = {NULL, 0};
+        HE_Edge_Array   edgeArray = {NULL, 0};
+        HE_Face_Array   faceArray = {NULL, 0};
+
+        for(int i = 0; i < source.vertex_array.size; i++){
+                x = source.vertex_array.array[i].x;
+                y = source.vertex_array.array[i].y;
+                z = source.vertex_array.array[i].z;
+                nextID = source.vertex_array.array[i].inc_edge_ID;
+                HE_vertexArray_Push(&vertArray, x, y, z, nextID);
+        }
+        int next, prvs, twin, inc, origin;
+        for(int i = 0; i < source.edge_array.size; i++){
+                origin = source.edge_array.array[i].origin_vertex_ID;
+                twin = source.edge_array.array[i].twin_edge_ID;
+                inc  = source.edge_array.array[i].inc_face_ID;
+                next = source.edge_array.array[i].nextEdge_ID;
+                prvs = source.edge_array.array[i].prvsEdge_ID;
+                HE_edgeArray_Push(&edgeArray, origin, twin, inc, next, prvs);
+        }
+        int edgeID;
+        for(int i = 0; i < source.face_array.size; i++){
+                edgeID = source.face_array.array[i].edge_ID;
+                HE_faceArray_Push(&faceArray, edgeID);
+        }
+        dest->vertex_array = vertArray;
+        dest->edge_array   = edgeArray;
+        dest->face_array   = faceArray;
+        return;
+}
+
+
+HE_Object HE_load(const char* filename){
+        int debug_counter = 0;
+        OBJ object;
+        read_obj(filename, &object);
+        HE_Object ret;
+
+        HE_load_vertices(object, &ret);
+        HE_center_model(&ret);
+        HE_generate_edge_and_face_array(object, &ret);
+
+        HE_Vertex_Array verArray = ret.vertex_array;
+        HE_Edge_Array edgeArray  = ret.edge_array;
+        HE_Face_Array faceArray  = ret.face_array;
+        free_obj(object);
 
           // PRINTS
         if(0){
@@ -320,13 +380,7 @@ HE_Object HE_load(const char* filename){
         printf("\n");
         }
 
-// Cleaning
-free_obj(object);
-HE_Object ret;
-ret.edge_array   = edgeArray;
-ret.vertex_array = verArray;
-ret.face_array   = faceArray;
-return ret;
+        return ret;
 }
 
 #endif

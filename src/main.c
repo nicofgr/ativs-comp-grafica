@@ -25,7 +25,7 @@
 const float ASPECT_RATIO = (float)SCREEN_WIDTH/(float)SCREEN_HEIGHT;
 #define TRUE  1
 #define FALSE 0
-#define TARGET_FPS 90
+#define TARGET_FPS 60
 #define FRAME_TARGET_TIME 1000/TARGET_FPS
 #define FOV 70
 
@@ -113,7 +113,7 @@ void drawLineH(float x1, float x2, float y1, float y2){
                 normalizePoint(point);
                 mat4 model;
                 mm_mat4_identity(model);
-                mm_scale(model, (vec3){1.0/3,1.0/3,1.0/3});
+                //mm_scale(model, (vec3){1.0/3,1.0/3,1.0/3});
                 mm_mat4_mulv3(model, point, point);
                 denormalizePoint(point);
                 drawPoint(point[0], point[1]);
@@ -147,7 +147,7 @@ void drawLineV(float x1, float x2, float y1, float y2){
                 normalizePoint(point);
                 mat4 model;
                 mm_mat4_identity(model);
-                mm_scale(model, (vec3){1.0/3,1.0/3,1.0/3});
+                //mm_scale(model, (vec3){1.0/3,1.0/3,1.0/3});
                 mm_mat4_mulv3(model, point, point);
                 denormalizePoint(point);
                 drawPoint(point[0], point[1]);
@@ -203,6 +203,8 @@ void drawLineXiaolinWu(float x1, float y1, float z1, float x2, float y2, float z
         vec3 point2 = {x2, y2, z2};
         mat4 model;
         mm_mat4_identity(model);
+        //mm_rotate(model, rotate_speed*((float)SDL_GetTicks()/1000.0f)*MM_PI*2, (vec3){0.0f, 1.0f, 0.0f});
+        //mm_translate(model, (vec3){0.25f,0.0f,0.0f});
         //mm_scale(model, (vec3){1.0/3,1.0/3,1.0/3});
         mm_mat4_mulv3(model, point1, point1);
         mm_mat4_mulv3(model, point2, point2);
@@ -354,15 +356,92 @@ void update_edgelist(char***orig, unsigned int* size){
         *orig = items;
 }
 
+
+HE_Object HE_clip(const HE_Object object){
+        HE_Object clipped;
+        HE_copy_object(object, &clipped);
+
+        return clipped;
+}
+
+int update_clipped = TRUE;
+HE_Object clipped;
+
+// TODO: Ajustar clipping de acordo com resolução da tela (dica: ajustar lim)
+int get_clip_code(const float x, const float y, const float lim){
+        int code = 0;
+        if(x < -lim)
+                code += 1;
+        if(x > lim)
+                code += 2;
+        if(y < -lim)
+                code += 4;
+        if(y > lim)
+                code += 8;
+        return code;
+}
+
+int clip_line(float* x1, float* y1, float* x2, float* y2, const float lim){
+        int code1 = get_clip_code(*x1, *y1, lim);
+        int code2 = get_clip_code(*x2, *y2, lim);
+        if(code1 == 0 && code2 == 0){
+                printf("Line fully inside\n");
+                return 1;
+        }
+        int logAND = code1 & code2;
+        if(logAND != 0){
+                //printf("Line fully outside\n");
+                return 0;
+        }
+        printf("(%.2f, %.2f) -> (%.2f, %.2f): %d, %d\n", *x1, *y1, *x2, *y2, code1, code2);
+        printf("Line partially inside\n");
+        if(code1 != 0){
+                printf("Start prunning p1\n");
+                float x = *x1;
+                float y = *y1;
+                printf("Start: (%.2f, %.2f)\n", x, y);
+                while(get_clip_code(x,y, lim) != 0){
+                        float u = 0.01;
+                        x = x + u*(*x2 - x);
+                        y = y + u*(*y2 - y);
+                        u *= 2;
+                }
+                *x1 = x;
+                *y1 = y;
+                printf("After: (%.2f, %.2f)\n\n", *x1, *y1);
+        }
+        if(code2 != 0){
+                printf("Start prunning p2\n");
+                float x = *x2;
+                float y = *y2;
+                printf("Start: (%.2f, %.2f)\n", x, y);
+                while(get_clip_code(x,y, lim) != 0){
+                        float u = 0.01;
+                        x = x + u*(*x1 - x);
+                        y = y + u*(*y1 - y);
+                        u *= 2;
+                }
+                *x2 = x;
+                *y2 = y;
+                printf("After: (%.2f, %.2f)\n\n", *x2, *y2);
+        }
+        return 1;
+}
+
 void HE_draw(const HE_Object object){
-        HE_Edge_Array   edgeArray = object.edge_array;
-        HE_Vertex_Array verArray  = object.vertex_array;
-        HE_Face_Array   faceArray = object.face_array;
+        if(update_clipped == TRUE){
+                clipped = HE_clip(object);
+                update_clipped = FALSE;
+        }
+        HE_Edge_Array   edgeArray = clipped.edge_array;
+        HE_Vertex_Array verArray  = clipped.vertex_array;
+        HE_Face_Array   faceArray = clipped.face_array;
 
         float scds = 8;  // Time to draw whole figure
         float cnt = (int)(SDL_GetTicks()/((scds*1000.0f)/edgeArray.size))%(edgeArray.size) + 1;
         int step = 0;
 
+        step_draw = FALSE;
         if(step_draw == FALSE)
                 cnt = edgeArray.size;
         for(int e = 0; e <= edgeArray.size; e++){
@@ -378,6 +457,9 @@ void HE_draw(const HE_Object object){
                 float x2 = verArray.array[nextVertex].x;
                 float y2 = verArray.array[nextVertex].y;
                 float z2 = verArray.array[nextVertex].z;
+
+                int res = clip_line(&x1, &y1, &x2, &y2, 0.9);
+
                 if (step_draw == FALSE && (originVertex == selected_vertex || nextVertex == selected_vertex) && option_selected == 3){
                         if(lineChoice == BRESENHAM)
                                 drawLineBresenham(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
