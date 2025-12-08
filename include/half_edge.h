@@ -292,7 +292,6 @@ static void HE_generate_edge_and_face_array(const OBJ object, HE_Object* ret){
         }
 
         // Percorre os edges por relações para encontrar o previous e o next
-        
         for(int index = 0; index < edgeArray.size; index++){
                 HE_HalfEdge edgeData = edgeArray.array[index];
                 HE_HalfEdge* array = edgeArray.array;
@@ -338,6 +337,29 @@ void HE_copy_object(const HE_Object source, HE_Object* dest){
         dest->vertex_array = vertArray;
         dest->edge_array   = edgeArray;
         dest->face_array   = faceArray;
+
+          // PRINTS
+        if(1){
+        printf("Output from function HE_copy_object\n");
+        printf("Vertices\n");
+        for(int i = 0; i < vertArray.size; i++){
+                HE_Vertex vert = vertArray.array[i];
+                printf("%d %.2f %.2f %.2f %d\n", i, vert.x, vert.y, vert.z, vert.inc_edge_ID);
+        }
+        printf("\n");
+        printf("Faces\n");
+        for(int i = 0; i < faceArray.size; i++){
+                HE_Face face = faceArray.array[i];
+                printf("%d %.2d\n", i, face.edge_ID);
+        }
+        printf("\n");
+        printf("Edges\n");
+        for(int i = 0; i < edgeArray.size; i++){
+                HE_HalfEdge edge = edgeArray.array[i];
+                printf("%.2d %.2d %.2d %.2d %.2d %.2d\n", i, edge.origin_vertex_ID+1, edge.twin_edge_ID, edge.inc_face_ID, edge.nextEdge_ID, edge.prvsEdge_ID);
+        }
+        printf("\n");
+        }
         return;
 }
 
@@ -358,24 +380,24 @@ HE_Object HE_load(const char* filename){
         free_obj(object);
 
           // PRINTS
-        if(0){
+        if(1){
         printf("Output from function HE_load\n");
         printf("Vertices\n");
         for(int i = 0; i < verArray.size; i++){
                 HE_Vertex vert = verArray.array[i];
-                printf("%d %.2f %.2f %.2f %d\n", i, vert.x, vert.y, vert.z, vert.inc_edge_ID);
+                printf("v%d: %d %.2f %.2f %.2f %d\n",i+1, i, vert.x, vert.y, vert.z, vert.inc_edge_ID);
         }
         printf("\n");
         printf("Faces\n");
         for(int i = 0; i < faceArray.size; i++){
                 HE_Face face = faceArray.array[i];
-                printf("%d %.2d\n", i, face.edge_ID);
+                printf("f%d: %.2d\n", i, face.edge_ID);
         }
         printf("\n");
         printf("Edges\n");
         for(int i = 0; i < edgeArray.size; i++){
                 HE_HalfEdge edge = edgeArray.array[i];
-                printf("%.2d %.2d %.2d %.2d %.2d %.2d\n", i, edge.origin_vertex_ID+1, edge.twin_edge_ID, edge.inc_face_ID, edge.nextEdge_ID, edge.prvsEdge_ID);
+                printf("e%.2d: v%.2d %.2d %.2d %.2d %.2d\n", i, edge.origin_vertex_ID+1, edge.twin_edge_ID, edge.inc_face_ID, edge.nextEdge_ID, edge.prvsEdge_ID);
         }
         printf("\n");
         }

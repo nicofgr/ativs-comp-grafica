@@ -18,6 +18,7 @@
 
 #include "half_edge.h"
 #include "matrix_math.h"
+#include "obj_loader.h"
 
 // My defines
 #define SCREEN_WIDTH   800
@@ -357,13 +358,6 @@ void update_edgelist(char***orig, unsigned int* size){
 }
 
 
-HE_Object HE_clip(const HE_Object object){
-        HE_Object clipped;
-        HE_copy_object(object, &clipped);
-
-        return clipped;
-}
-
 int update_clipped = TRUE;
 HE_Object clipped;
 
@@ -385,21 +379,21 @@ int clip_line(float* x1, float* y1, float* x2, float* y2, const float lim){
         int code1 = get_clip_code(*x1, *y1, lim);
         int code2 = get_clip_code(*x2, *y2, lim);
         if(code1 == 0 && code2 == 0){
-                printf("Line fully inside\n");
-                return 1;
+                //printf("Line fully inside\n");
+                return 2;
         }
         int logAND = code1 & code2;
         if(logAND != 0){
                 //printf("Line fully outside\n");
                 return 0;
         }
-        printf("(%.2f, %.2f) -> (%.2f, %.2f): %d, %d\n", *x1, *y1, *x2, *y2, code1, code2);
-        printf("Line partially inside\n");
+        //printf("(%.2f, %.2f) -> (%.2f, %.2f): %d, %d\n", *x1, *y1, *x2, *y2, code1, code2);
+        //printf("Line partially inside\n");
         if(code1 != 0){
-                printf("Start prunning p1\n");
+                //printf("Start prunning p1\n");
                 float x = *x1;
                 float y = *y1;
-                printf("Start: (%.2f, %.2f)\n", x, y);
+                //printf("Start: (%.2f, %.2f)\n", x, y);
                 while(get_clip_code(x,y, lim) != 0){
                         float u = 0.01;
                         x = x + u*(*x2 - x);
@@ -408,13 +402,13 @@ int clip_line(float* x1, float* y1, float* x2, float* y2, const float lim){
                 }
                 *x1 = x;
                 *y1 = y;
-                printf("After: (%.2f, %.2f)\n\n", *x1, *y1);
+                //printf("After: (%.2f, %.2f)\n\n", *x1, *y1);
         }
         if(code2 != 0){
-                printf("Start prunning p2\n");
+                //printf("Start prunning p2\n");
                 float x = *x2;
                 float y = *y2;
-                printf("Start: (%.2f, %.2f)\n", x, y);
+               //printf("Start: (%.2f, %.2f)\n", x, y);
                 while(get_clip_code(x,y, lim) != 0){
                         float u = 0.01;
                         x = x + u*(*x1 - x);
@@ -423,16 +417,171 @@ int clip_line(float* x1, float* y1, float* x2, float* y2, const float lim){
                 }
                 *x2 = x;
                 *y2 = y;
-                printf("After: (%.2f, %.2f)\n\n", *x2, *y2);
+                //printf("After: (%.2f, %.2f)\n\n", *x2, *y2);
         }
-        return 1;
+        return 1; 
+}
+
+HE_Object HE_clip(const HE_Object source){
+        HE_Object clipped;
+
+        HE_Edge_Array   edgeArray = source.edge_array;
+        HE_Vertex_Array verArray  = source.vertex_array;
+        HE_Face_Array   faceArray = source.face_array;
+
+        HE_Edge_Array   newEdgeArray = {NULL,0};
+        HE_Vertex_Array newVertArray = {NULL,0};
+        HE_Face_Array   newFaceArray = {NULL,0};
+
+        for(int f = 0; f < faceArray.size; f++){
+                puts("Creating new face");
+                HE_faceArray_Push(&newFaceArray, -1);
+
+                int startEdge = faceArray.array[f].edge_ID;
+                int currEdge = startEdge;
+                int originVertex = edgeArray.array[currEdge].origin_vertex_ID;
+                float x1 = verArray.array[originVertex].x;
+                float y1 = verArray.array[originVertex].y;
+                float z1 = verArray.array[originVertex].z;
+
+                int nextEdge = edgeArray.array[startEdge].nextEdge_ID;
+                int nextVertex = edgeArray.array[nextEdge].origin_vertex_ID;
+                float x2 = verArray.array[nextVertex].x;
+                float y2 = verArray.array[nextVertex].y;
+                float z2 = verArray.array[nextVertex].z;
+
+                int newStartingEdgeID = newEdgeArray.size;
+                do{
+                        printf("Input: v%d(%.2f %.2f) -> v%d(%.2f %.2f)\n",originVertex+1, x1, y1, nextVertex+1, x2, y2);
+                        int res = clip_line(&x1, &y1, &x2, &y2, 0.9);
+                        if(res == 0){ // If line is fully outside
+                                currEdge = nextEdge;
+                                originVertex = edgeArray.array[currEdge].origin_vertex_ID;
+                                x1 = verArray.array[originVertex].x;
+                                y1 = verArray.array[originVertex].y;
+                                nextEdge = edgeArray.array[nextEdge].nextEdge_ID;
+                                nextVertex = edgeArray.array[nextEdge].origin_vertex_ID;
+                                x2 = verArray.array[nextVertex].x;
+                                y2 = verArray.array[nextVertex].y;
+                                puts("Discarded");
+                                continue;
+                        }
+                        HE_vertexArray_Push(&newVertArray, x1, y1, z1, -1);
+                        printf("v%d: (%.2f %.2f %.2f) %d\n", newVertArray.size, x1, y1, z1, newVertArray.size);
+                        HE_vertexArray_Push(&newVertArray, x2, y2, z2, -1);
+                        printf("v%d: (%.2f %.2f %.2f) %d\n", newVertArray.size, x2, y2, z2, -1);
+                        HE_edgeArray_Push(&newEdgeArray, newVertArray.size-2, -1, newFaceArray.size-1, newEdgeArray.size+1, -1);
+                        printf("e%d: v%d %.2d %.2d e%d e%d\n", newEdgeArray.size-1, newVertArray.size-1, -1, newFaceArray.size-1, newEdgeArray.size, -1);
+                        
+                        currEdge = nextEdge;
+                        originVertex = edgeArray.array[currEdge].origin_vertex_ID;
+                        x1 = verArray.array[originVertex].x;
+                        y1 = verArray.array[originVertex].y;
+                        nextEdge = edgeArray.array[nextEdge].nextEdge_ID;
+                        nextVertex = edgeArray.array[nextEdge].origin_vertex_ID;
+                        x2 = verArray.array[nextVertex].x;
+                        y2 = verArray.array[nextVertex].y;
+                }while(currEdge != startEdge);
+
+                if(newEdgeArray.size > 0 && newEdgeArray.size != newStartingEdgeID){
+                        HE_edgeArray_Push(&newEdgeArray, newVertArray.size-1, -1, newFaceArray.size-1, newStartingEdgeID, -1);
+                        printf("e%d: v%d %.2d %.2d e%d e%d\n", newEdgeArray.size-1, newVertArray.size-1, -1, newFaceArray.size-1, newEdgeArray.size, -1);
+                        //newEdgeArray.array[newEdgeArray.size-1].nextEdge_ID = newStartingEdgeID;
+                }
+                puts("Face created");
+                puts("");
+        }
+        puts("Vertices");
+        for(int i = 0; i < newVertArray.size; i++){
+                HE_Vertex vert = newVertArray.array[i];
+                printf("v%d (%.2f %.2f %.2f) %d\n", i+1, vert.x, vert.y, vert.z, vert.inc_edge_ID);
+        }
+        puts("");
+        printf("Faces\n");
+        for(int i = 0; i < newFaceArray.size; i++){
+                HE_Face face = newFaceArray.array[i];
+                printf("%d %.2d\n", i, face.edge_ID);
+        }
+        puts("");
+        printf("Edges\n");
+        for(int i = 0; i < newEdgeArray.size; i++){
+                HE_HalfEdge edge = newEdgeArray.array[i];
+                printf("e%d: v%d %.2d %.2d ne%d pe%d\n", i, edge.origin_vertex_ID+1, edge.twin_edge_ID, edge.inc_face_ID, edge.nextEdge_ID, edge.prvsEdge_ID);
+        }
+        puts("");
+        /**
+        for(int e = 0; e < edgeArray.size; e++){
+                int originVertex = edgeArray.array[e].origin_vertex_ID;
+                float x1 = verArray.array[originVertex].x;
+                float y1 = verArray.array[originVertex].y;
+                float z1 = verArray.array[originVertex].z;
+
+                int nextEdge = edgeArray.array[e].nextEdge_ID;
+                int nextVertex = edgeArray.array[nextEdge].origin_vertex_ID;
+                float x2 = verArray.array[nextVertex].x;
+                float y2 = verArray.array[nextVertex].y;
+                float z2 = verArray.array[nextVertex].z;
+
+                int res = clip_line(&x1, &y1, &x2, &y2, 0.9);
+                if(res == 0) // If line is fully outside
+                        continue;
+                if(res == 2) // Line fully inside, no need to update
+                        continue;
+                
+                HE_vertexArray_Push(&verArray, x1, y1, z1, nextEdge);
+                int nextNextEdge = edgeArray.array[nextEdge].nextEdge_ID;
+                HE_vertexArray_Push(&verArray, x2, y2, z2, nextNextEdge);
+
+
+        }**/
+
+        /**
+        for(int e = 0; e < edgeArray.size; e++){
+                int originVertex = edgeArray.array[e].origin_vertex_ID;
+                float x1 = verArray.array[originVertex].x;
+                float y1 = verArray.array[originVertex].y;
+                float z1 = verArray.array[originVertex].z;
+
+                int nextEdge = edgeArray.array[e].nextEdge_ID;
+                int nextVertex = edgeArray.array[nextEdge].origin_vertex_ID;
+                float x2 = verArray.array[nextVertex].x;
+                float y2 = verArray.array[nextVertex].y;
+                float z2 = verArray.array[nextVertex].z;
+
+                drawLineXiaolinWu(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.65f, 0.12f, 0.5f});
+        }
+        **/
+        for(int e = 0; e < newEdgeArray.size; e++){
+                printf("drawing edge: %d\n", e);
+                fflush(stdout);
+                int originVertex = newEdgeArray.array[e].origin_vertex_ID;
+                float x1 = newVertArray.array[originVertex].x;
+                float y1 = newVertArray.array[originVertex].y;
+                printf("v%d: ( %.2f %.2f) -> ", originVertex+1, x1, y1);
+                fflush(stdout);
+
+                int nextEdge = newEdgeArray.array[e].nextEdge_ID;
+                int nextVertex = newEdgeArray.array[nextEdge].origin_vertex_ID;
+                float x2 = newVertArray.array[nextVertex].x;
+                float y2 = newVertArray.array[nextVertex].y;
+                printf("v%d: ( %.2f %.2f)\n", nextVertex+1, x2, y2);
+                fflush(stdout);
+
+                drawLineXiaolinWu(x1, y1, 0, x2, y2, 0, 20, 0.4f, (Color_RGBA){0.85f, 0.65f, 0.12f, 0.5f});
+        }
+
+        clipped.edge_array = newEdgeArray;
+        clipped.vertex_array = newVertArray;
+        clipped.face_array = newFaceArray;
+        return clipped;
 }
 
 void HE_draw(const HE_Object object){
         if(update_clipped == TRUE){
                 clipped = HE_clip(object);
-                update_clipped = FALSE;
+                //update_clipped = FALSE;
         }
+        /**
         HE_Edge_Array   edgeArray = clipped.edge_array;
         HE_Vertex_Array verArray  = clipped.vertex_array;
         HE_Face_Array   faceArray = clipped.face_array;
@@ -458,8 +607,6 @@ void HE_draw(const HE_Object object){
                 float y2 = verArray.array[nextVertex].y;
                 float z2 = verArray.array[nextVertex].z;
 
-                int res = clip_line(&x1, &y1, &x2, &y2, 0.9);
-
                 if (step_draw == FALSE && (originVertex == selected_vertex || nextVertex == selected_vertex) && option_selected == 3){
                         if(lineChoice == BRESENHAM)
                                 drawLineBresenham(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.02f, 0.12f, 1.0f});
@@ -478,6 +625,7 @@ void HE_draw(const HE_Object object){
                 }
                 step++;
         }
+        **/
 }
 
 void init() {
