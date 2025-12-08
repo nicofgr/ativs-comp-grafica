@@ -451,10 +451,12 @@ HE_Object HE_clip(const HE_Object source){
                 float z2 = verArray.array[nextVertex].z;
 
                 int newStartingEdgeID = newEdgeArray.size;
+                //int newStartingVertID = verArray.size;
                 do{
                         printf("Input: v%d(%.2f %.2f) -> v%d(%.2f %.2f)\n",originVertex+1, x1, y1, nextVertex+1, x2, y2);
                         int res = clip_line(&x1, &y1, &x2, &y2, 0.9);
                         if(res == 0){ // If line is fully outside
+                                puts("Discarded");
                                 currEdge = nextEdge;
                                 originVertex = edgeArray.array[currEdge].origin_vertex_ID;
                                 x1 = verArray.array[originVertex].x;
@@ -463,7 +465,6 @@ HE_Object HE_clip(const HE_Object source){
                                 nextVertex = edgeArray.array[nextEdge].origin_vertex_ID;
                                 x2 = verArray.array[nextVertex].x;
                                 y2 = verArray.array[nextVertex].y;
-                                puts("Discarded");
                                 continue;
                         }
                         HE_vertexArray_Push(&newVertArray, x1, y1, z1, -1);
@@ -484,8 +485,11 @@ HE_Object HE_clip(const HE_Object source){
                 }while(currEdge != startEdge);
 
                 if(newEdgeArray.size > 0 && newEdgeArray.size != newStartingEdgeID){
+                        puts("Closing shape");
+                        HE_edgeArray_Push(&newEdgeArray, newVertArray.size-1, -1, newFaceArray.size-1, newEdgeArray.size+1, -1);
+                        HE_vertexArray_Push(&newVertArray, -0.9, 0.9, z1, -1);  // TODO: make this modular
+
                         HE_edgeArray_Push(&newEdgeArray, newVertArray.size-1, -1, newFaceArray.size-1, newStartingEdgeID, -1);
-                        printf("e%d: v%d %.2d %.2d e%d e%d\n", newEdgeArray.size-1, newVertArray.size-1, -1, newFaceArray.size-1, newEdgeArray.size, -1);
                         //newEdgeArray.array[newEdgeArray.size-1].nextEdge_ID = newStartingEdgeID;
                 }
                 puts("Face created");
@@ -552,19 +556,19 @@ HE_Object HE_clip(const HE_Object source){
         }
         **/
         for(int e = 0; e < newEdgeArray.size; e++){
-                printf("drawing edge: %d\n", e);
+                //printf("drawing edge: %d\n", e);
                 fflush(stdout);
                 int originVertex = newEdgeArray.array[e].origin_vertex_ID;
                 float x1 = newVertArray.array[originVertex].x;
                 float y1 = newVertArray.array[originVertex].y;
-                printf("v%d: ( %.2f %.2f) -> ", originVertex+1, x1, y1);
+                //printf("v%d: ( %.2f %.2f) -> ", originVertex+1, x1, y1);
                 fflush(stdout);
 
                 int nextEdge = newEdgeArray.array[e].nextEdge_ID;
                 int nextVertex = newEdgeArray.array[nextEdge].origin_vertex_ID;
                 float x2 = newVertArray.array[nextVertex].x;
                 float y2 = newVertArray.array[nextVertex].y;
-                printf("v%d: ( %.2f %.2f)\n", nextVertex+1, x2, y2);
+               // printf("v%d: ( %.2f %.2f)\n\n", nextVertex+1, x2, y2);
                 fflush(stdout);
 
                 drawLineXiaolinWu(x1, y1, 0, x2, y2, 0, 20, 0.4f, (Color_RGBA){0.85f, 0.65f, 0.12f, 0.5f});
