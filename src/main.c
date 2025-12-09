@@ -366,13 +366,13 @@ HE_Object clipped;
 int get_clip_code(const float x, const float y, const float lim){
         int code = 0;
         if(x < -lim)
-                code += 1;
+                code += 1; // 0001
         if(x > lim)
-                code += 2;
+                code += 2; // 0010
         if(y < -lim)
-                code += 4;
+                code += 4; // 0100
         if(y > lim)
-                code += 8;
+                code += 8; // 1000
         return code;
 }
 
@@ -391,15 +391,15 @@ int clip_line(float* x1, float* y1, float* x2, float* y2, const float lim){
         //printf("(%.2f, %.2f) -> (%.2f, %.2f): %d, %d\n", *x1, *y1, *x2, *y2, code1, code2);
         //printf("Line partially inside\n");
         if(code1 != 0){
-                //printf("Start prunning p1\n");
+                //puts("Start prunning p1");
                 float x = *x1;
                 float y = *y1;
+                float u = 0.01;
                 //printf("Start: (%.2f, %.2f)\n", x, y);
                 while(get_clip_code(x,y, lim) != 0){
-                        float u = 0.01;
                         x = x + u*(*x2 - x);
                         y = y + u*(*y2 - y);
-                        u *= 2;
+                        //printf("It: (%.2f, %.2f)\n", x, y);
                 }
                 *x1 = x;
                 *y1 = y;
@@ -409,12 +409,11 @@ int clip_line(float* x1, float* y1, float* x2, float* y2, const float lim){
                 //printf("Start prunning p2\n");
                 float x = *x2;
                 float y = *y2;
+                float u = 0.01;
                //printf("Start: (%.2f, %.2f)\n", x, y);
                 while(get_clip_code(x,y, lim) != 0){
-                        float u = 0.01;
                         x = x + u*(*x1 - x);
                         y = y + u*(*y1 - y);
-                        u *= 2;
                 }
                 *x2 = x;
                 *y2 = y;
@@ -433,10 +432,10 @@ void HE_print_last_vertex(const HE_Vertex_Array vertArr){
 }
 
 int get_clipped_line_screen_edge(const HE_Vertex v){
-        if(v.y > 0.89)  return 0;
-        if(v.x < -0.89) return 1;
-        if(v.y < -0.89) return 2;
-        if(v.x > 0.89)  return 3;
+        if(v.y > 0.88)  return 0;
+        if(v.x < -0.88) return 1;
+        if(v.y < -0.88) return 2;
+        if(v.x > 0.88)  return 3;
 }
 
 HE_Object HE_clip(const HE_Object source){
@@ -475,7 +474,7 @@ HE_Object HE_clip(const HE_Object source){
                         y1 = verArray.array[originVertex].y;
                         x2 = verArray.array[nextVertex].x;
                         y2 = verArray.array[nextVertex].y;
-                        //printf("Input: v%d(%.2f %.2f) -> v%d(%.2f %.2f)\n",originVertex+1, x1, y1, nextVertex+1, x2, y2);
+                        printf("Input: v%d(%.2f %.2f) -> v%d(%.2f %.2f)\n",originVertex+1, x1, y1, nextVertex+1, x2, y2);
                         int res = clip_line(&x1, &y1, &x2, &y2, 0.9);
                         if(res == 0){ // If line is fully outside
                                 puts("Discarded");
@@ -596,6 +595,7 @@ HE_Object HE_clip(const HE_Object source){
 
 void HE_draw(const HE_Object object){
         if(update_clipped == TRUE){
+                HE_free_object(&clipped);
                 clipped = HE_clip(object);
                 update_clipped = FALSE;
         }
@@ -603,6 +603,12 @@ void HE_draw(const HE_Object object){
         HE_Edge_Array   edgeArray = clipped.edge_array;
         HE_Vertex_Array verArray  = clipped.vertex_array;
         HE_Face_Array   faceArray = clipped.face_array;
+
+        /**
+        edgeArray = object.edge_array;
+        verArray  = object.vertex_array;
+        faceArray = object.face_array;
+        **/
 
         float scds = 8;  // Time to draw whole figure
         float cnt = (int)(SDL_GetTicks()/((scds*1000.0f)/edgeArray.size))%(edgeArray.size) + 1;
@@ -720,7 +726,7 @@ void transformObject(char command[50]){
         HE_applyTransform(transform, current_object);
         fflush(stdout);
 
-        saveObject("transformado.obj");
+        //saveObject("transformado.obj");
         return;
 }
 
@@ -787,6 +793,19 @@ void input(int * quit){
                 vec3 aux;
                 mm_vec3_crossn(camera_front, camera_up, aux);
                 mm_vec3_muladds(aux, camera_speed, camera_pos);
+        }
+        if(states[SDL_SCANCODE_M]){
+                int x = 0;
+                int y = 0;
+                SDL_GetMouseState(&x, &y);
+                float xf = (float)x/SCREEN_WIDTH*2 - 1;
+                float yf = (float)y/SCREEN_HEIGHT*2 - 1;
+                printf("%.2f %.2f\n", xf, yf);
+                mat4 transform;
+                mm_mat4_identity(transform);
+                mm_translate(transform, (vec3){xf, -yf, 0});
+                HE_applyTransform(transform, current_object);
+                update_clipped = TRUE;
         }
 
         const float sensitivity = 0.25;

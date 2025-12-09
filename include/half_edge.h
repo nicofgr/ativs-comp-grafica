@@ -49,7 +49,27 @@ typedef struct{
         HE_Edge_Array edge_array;
 }HE_Object;
 
+static void HE_center_model(HE_Object* object){
+        HE_Vertex_Array verArray = object->vertex_array;
+        // Centering model in local space
+        float sumX = 0;
+        float sumY = 0;
+        float sumZ = 0;
+        for(int i = 0; i < verArray.size; i++){
+                sumX += verArray.array[i].x; 
+                sumY += verArray.array[i].y; 
+                sumZ += verArray.array[i].z; 
+        }
+        for(int i = 0; i < verArray.size; i++){
+                verArray.array[i].x -= (sumX/verArray.size);
+                verArray.array[i].y -= (sumY/verArray.size);
+                verArray.array[i].z -= (sumZ/verArray.size);
+        }
+        return;
+}
+
 void HE_applyTransform(mat4 m, HE_Object o){
+        HE_center_model(&o);
         unsigned int size = o.vertex_array.size;
         for(int i = 0; i < size; i++){
                 float x = o.vertex_array.array[i].x;
@@ -218,24 +238,6 @@ static void HE_load_vertices(const OBJ object, HE_Object* output){
         return;
 }
 
-static void HE_center_model(HE_Object* object){
-        HE_Vertex_Array verArray = object->vertex_array;
-        // Centering model in local space
-        float sumX = 0;
-        float sumY = 0;
-        float sumZ = 0;
-        for(int i = 0; i < verArray.size; i++){
-                sumX += verArray.array[i].x; 
-                sumY += verArray.array[i].y; 
-                sumZ += verArray.array[i].z; 
-        }
-        for(int i = 0; i < verArray.size; i++){
-                verArray.array[i].x -= (sumX/verArray.size);
-                verArray.array[i].y -= (sumY/verArray.size);
-                verArray.array[i].z -= (sumZ/verArray.size);
-        }
-        return;
-}
 
 static void HE_generate_edge_and_face_array(const OBJ object, HE_Object* ret){
         HE_Vertex_Array verArray = ret->vertex_array;
@@ -403,6 +405,15 @@ HE_Object HE_load(const char* filename){
         }
 
         return ret;
+}
+
+void HE_free_object(HE_Object* object){
+        free(object->edge_array.array);
+        free(object->vertex_array.array);
+        free(object->face_array.array);
+        object->face_array.size   = 0;
+        object->edge_array.size   = 0;
+        object->vertex_array.size = 0;
 }
 
 #endif
