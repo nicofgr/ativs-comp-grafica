@@ -388,32 +388,39 @@ int clip_line(float* x1, float* y1, float* x2, float* y2, const float lim){
                 //printf("Line fully outside\n");
                 return 0;
         }
-        //printf("(%.2f, %.2f) -> (%.2f, %.2f): %d, %d\n", *x1, *y1, *x2, *y2, code1, code2);
-        //printf("Line partially inside\n");
+        printf("(%.2f, %.2f) -> (%.2f, %.2f): %d, %d\n", *x1, *y1, *x2, *y2, code1, code2);
+        printf("Line partially inside\n");
+        fflush(stdout);
         if(code1 != 0){
-                //puts("Start prunning p1");
+                puts("Start prunning p1");
                 float x = *x1;
                 float y = *y1;
                 float u = 0.01;
-                //printf("Start: (%.2f, %.2f)\n", x, y);
+                printf("Start: (%.2f, %.2f)\n", x, y);
+                int i = 0;
                 while(get_clip_code(x,y, lim) != 0){
+                        if(i == 1000) return 0;
                         x = x + u*(*x2 - x);
                         y = y + u*(*y2 - y);
-                        //printf("It: (%.2f, %.2f)\n", x, y);
+                        i++;
                 }
                 *x1 = x;
                 *y1 = y;
-                //printf("After: (%.2f, %.2f)\n\n", *x1, *y1);
+                printf("After: (%.2f, %.2f)\n\n", *x1, *y1);
         }
+        fflush(stdout);
         if(code2 != 0){
                 //printf("Start prunning p2\n");
                 float x = *x2;
                 float y = *y2;
                 float u = 0.01;
                //printf("Start: (%.2f, %.2f)\n", x, y);
+                int i = 0;
                 while(get_clip_code(x,y, lim) != 0){
+                        if(i == 1000) return 0;
                         x = x + u*(*x1 - x);
                         y = y + u*(*y1 - y);
+                        i++;
                 }
                 *x2 = x;
                 *y2 = y;
@@ -475,7 +482,13 @@ HE_Object HE_clip(const HE_Object source){
                         x2 = verArray.array[nextVertex].x;
                         y2 = verArray.array[nextVertex].y;
                         printf("Input: v%d(%.2f %.2f) -> v%d(%.2f %.2f)\n",originVertex+1, x1, y1, nextVertex+1, x2, y2);
+                        printf("Hello1a\n");
+                        fflush(stdout);
                         int res = clip_line(&x1, &y1, &x2, &y2, 0.9);
+                        printf("Hello1b\n");
+                        fflush(stdout);
+                        printf("%d\n", res);
+                        fflush(stdout);
                         if(res == 0){ // If line is fully outside
                                 puts("Discarded");
                                 currEdge = nextEdge;
