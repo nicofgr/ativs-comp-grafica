@@ -437,7 +437,6 @@ int get_clipped_line_screen_edge(const HE_Vertex v){
         if(v.x < -0.89) return 1;
         if(v.y < -0.89) return 2;
         if(v.x > 0.89)  return 3;
-        return -1;
 }
 
 HE_Object HE_clip(const HE_Object source){
@@ -497,11 +496,6 @@ HE_Object HE_clip(const HE_Object source){
 
                         HE_vertexArray_Push(&newVertArray, x2, y2, z2, -1);
                         HE_print_last_vertex(newVertArray);
-                        //HE_vertexArray_Push(&newVertArray, x2, y2, z2, -1);
-                        //HE_print_last_vertex(newVertArray);
-
-                        //HE_edgeArray_Push(&newEdgeArray, newVertArray.size-2, -1, newFaceArray.size-1, newEdgeArray.size+1, -1);
-                        //print_last_edge(newEdgeArray);
                         
                         currEdge = nextEdge;
                         originVertex = edgeArray.array[currEdge].origin_vertex_ID;
@@ -513,9 +507,7 @@ HE_Object HE_clip(const HE_Object source){
                 
                 puts("Closing shape");
                 int res0 = get_clipped_line_screen_edge(newVertArray.array[newStartingVertID]);
-                //if(res0 == -1) res0 = get_clipped_line_screen_edge(newVertArray.array[newStartingVertID+1]);
                 int res1 = get_clipped_line_screen_edge(newVertArray.array[newVertArray.size-1]);
-                //if(res1 == -1) res1 = get_clipped_line_screen_edge(newVertArray.array[newVertArray.size-2]);
                 printf("Starting edge: %d\nFinish edge: %d\n", res0, res1);
                 while( res0 != res1){
                         switch(res1){
@@ -553,21 +545,6 @@ HE_Object HE_clip(const HE_Object source){
                 newEdgeArray.array[newEdgeArray.size-1].nextEdge_ID = newStartingEdgeID;
                 print_last_edge(newEdgeArray);
 
-                //HE_edgeArray_Push(&newEdgeArray, newVertArray.size-1, -1, newFaceArray.size-1, newStartingEdgeID, -1);
-                //print_last_edge(newEdgeArray);
-
-                /**
-                HE_edgeArray_Push(&newEdgeArray, newVertArray.size-1, -1, newFaceArray.size-1, newEdgeArray.size+1, -1);
-                print_last_edge(newEdgeArray);
-
-                HE_vertexArray_Push(&newVertArray, -0.9, 0.9, z1, -1);  // TODO: make this modular
-                HE_print_last_vertex(newVertArray);
-                                                                        // return location from clip func
-                HE_edgeArray_Push(&newEdgeArray, newVertArray.size-1, -1, newFaceArray.size-1, newStartingEdgeID, -1);
-                print_last_edge(newEdgeArray);
-                //newEdgeArray.array[newEdgeArray.size-1].nextEdge_ID = newStartingEdgeID;
-                **/
-                
                 puts("Face created");
                 puts("");
         }
@@ -592,47 +569,6 @@ HE_Object HE_clip(const HE_Object source){
         }
         puts("");
         /**
-        for(int e = 0; e < edgeArray.size; e++){
-                int originVertex = edgeArray.array[e].origin_vertex_ID;
-                float x1 = verArray.array[originVertex].x;
-                float y1 = verArray.array[originVertex].y;
-                float z1 = verArray.array[originVertex].z;
-
-                int nextEdge = edgeArray.array[e].nextEdge_ID;
-                int nextVertex = edgeArray.array[nextEdge].origin_vertex_ID;
-                float x2 = verArray.array[nextVertex].x;
-                float y2 = verArray.array[nextVertex].y;
-                float z2 = verArray.array[nextVertex].z;
-
-                int res = clip_line(&x1, &y1, &x2, &y2, 0.9);
-                if(res == 0) // If line is fully outside
-                        continue;
-                if(res == 2) // Line fully inside, no need to update
-                        continue;
-                
-                HE_vertexArray_Push(&verArray, x1, y1, z1, nextEdge);
-                int nextNextEdge = edgeArray.array[nextEdge].nextEdge_ID;
-                HE_vertexArray_Push(&verArray, x2, y2, z2, nextNextEdge);
-
-
-        }**/
-
-        /**
-        for(int e = 0; e < edgeArray.size; e++){
-                int originVertex = edgeArray.array[e].origin_vertex_ID;
-                float x1 = verArray.array[originVertex].x;
-                float y1 = verArray.array[originVertex].y;
-                float z1 = verArray.array[originVertex].z;
-
-                int nextEdge = edgeArray.array[e].nextEdge_ID;
-                int nextVertex = edgeArray.array[nextEdge].origin_vertex_ID;
-                float x2 = verArray.array[nextVertex].x;
-                float y2 = verArray.array[nextVertex].y;
-                float z2 = verArray.array[nextVertex].z;
-
-                drawLineXiaolinWu(x1, y1, z1, x2, y2, z2, 20, 0.4f, (Color_RGBA){0.85f, 0.65f, 0.12f, 0.5f});
-        }
-        **/
         for(int e = 0; e < newEdgeArray.size; e++){
                 //printf("drawing edge: %d\n", e);
                 fflush(stdout);
@@ -650,7 +586,7 @@ HE_Object HE_clip(const HE_Object source){
                 fflush(stdout);
 
                 drawLineXiaolinWu(x1, y1, 0, x2, y2, 0, 20, 0.4f, (Color_RGBA){0.85f, 0.65f, 0.12f, 0.5f});
-        }
+        }**/
 
         clipped.edge_array = newEdgeArray;
         clipped.vertex_array = newVertArray;
@@ -661,9 +597,9 @@ HE_Object HE_clip(const HE_Object source){
 void HE_draw(const HE_Object object){
         if(update_clipped == TRUE){
                 clipped = HE_clip(object);
-                //update_clipped = FALSE;
+                update_clipped = FALSE;
         }
-        /**
+
         HE_Edge_Array   edgeArray = clipped.edge_array;
         HE_Vertex_Array verArray  = clipped.vertex_array;
         HE_Face_Array   faceArray = clipped.face_array;
@@ -707,7 +643,6 @@ void HE_draw(const HE_Object object){
                 }
                 step++;
         }
-        **/
 }
 
 void init() {
