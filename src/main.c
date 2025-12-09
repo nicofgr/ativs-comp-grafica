@@ -41,7 +41,9 @@ float yaw = -90.0f;
 float pitch = 0.0f;
 
 HE_Object current_object;
+HE_Object current_object2;
 char* opened_file = NULL;
+char* opened_file_2 = NULL;
 int last_frame_time = 0;
 int lastTime = 0;
 struct nk_context *ctx;
@@ -610,7 +612,7 @@ void HE_draw(const HE_Object object){
         if(update_clipped == TRUE){
                 HE_free_object(&clipped);
                 clipped = HE_clip(object);
-                update_clipped = FALSE;
+                //update_clipped = FALSE;
         }
 
         HE_Edge_Array   edgeArray = clipped.edge_array;
@@ -667,6 +669,7 @@ void HE_draw(const HE_Object object){
 void init() {
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         current_object = HE_load("test.obj");
+        current_object2 = HE_load("test2.obj");
 }
 int update_item = FALSE;
 
@@ -696,7 +699,7 @@ void saveObject(char* filename){
         fclose(file);
 }
 
-void transformObject(char command[50]){
+void transformObject(char command[50], HE_Object obj){
         printf("Command read: %s\n", command);
         mat4 transform;
         float rad = 0;
@@ -736,14 +739,19 @@ void transformObject(char command[50]){
                         puts("Comando não reconhecido 2");
                         return;
         }
-        HE_applyTransform(transform, current_object);
+        HE_applyTransform(transform, obj);
         fflush(stdout);
 
         //saveObject("transformado.obj");
         return;
 }
 
+HE_Object selected;
+int changeSel = 1;
 void input(int * quit){
+        selected = current_object;
+        if(changeSel == -1)
+                selected = current_object2;
         SDL_Event e;
         const float camera_speed = 0.1f;
         const Uint8* states = SDL_GetKeyboardState(NULL);
@@ -756,18 +764,20 @@ void input(int * quit){
                                 if(e.key.keysym.sym == SDLK_ESCAPE)
                                         *quit = TRUE;
                                 if(e.key.keysym.sym == SDLK_TAB){
+                                        changeSel *= -1;
+                                        /**
                                         if(SDL_GetRelativeMouseMode() == SDL_TRUE){
                                                 SDL_SetRelativeMouseMode(SDL_FALSE);
                                         }else{
                                                 SDL_SetRelativeMouseMode(SDL_TRUE);
                                                 SDL_GetRelativeMouseState(NULL, NULL);
-                                        }
+                                        }**/
                                 }
                                 if(e.key.keysym.sym == SDLK_SLASH){
                                         char command[50];
                                         fgets(command, 50, stdin);
                                         command[49] = '\0';
-                                        transformObject(command); 
+                                        transformObject(command, selected); 
                                 }
                                 break;  
                         case SDL_DROPFILE:
@@ -782,6 +792,7 @@ void input(int * quit){
                                 current_object = HE_load(opened_file);
                                 update_item = TRUE;
                                 SDL_free(e.drop.file);
+                                update_clipped = TRUE;
                                 break;
                 }
         }
@@ -817,7 +828,7 @@ void input(int * quit){
                 mat4 transform;
                 mm_mat4_identity(transform);
                 mm_translate(transform, (vec3){xf, -yf, 0});
-                HE_applyTransform(transform, current_object);
+                HE_applyTransform(transform, selected);
                 update_clipped = TRUE;
         }
 
@@ -867,6 +878,7 @@ void draw(){
         SDL_RenderClear(renderer);
         SDL_SetRenderDrawColor(renderer, 100, 255, 255, 255); // White color (RGBA)
         HE_draw(current_object);
+        HE_draw(current_object2);
         SDL_RenderPresent(renderer);
 }
 
